@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bazar — демо маркетплейса</title>
+<style>
+:root{--bg:#f2f4ef;--sf:#fff;--ink:#16221d;--mut:#5b6a63;--ac:#0d6b57;--acx:#fff;--hl:#e4a61f;--bd:#d5dbd3;--er:#b3261e;--ok:#1b7a3d;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121a16;--sf:#1b2621;--ink:#e8efe9;--mut:#9db0a5;--ac:#4cc3a4;--acx:#08241c;--hl:#f0b93a;--bd:#2c3b34;--er:#ff8a80;--ok:#6fd48f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121a16;--sf:#1b2621;--ink:#e8efe9;--mut:#9db0a5;--ac:#4cc3a4;--acx:#08241c;--hl:#f0b93a;--bd:#2c3b34;--er:#ff8a80;--ok:#6fd48f;color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Trebuchet MS","Segoe UI",Tahoma,sans-serif}
+header{position:sticky;top:env(safe-area-inset-top,0px);background:var(--sf);border-bottom:1px solid var(--bd);z-index:5}
+.bar{max-width:1000px;margin:auto;display:flex;align-items:center;gap:8px;padding:8px 12px;flex-wrap:wrap}
+.logo{font:700 22px Georgia,serif;letter-spacing:.5px;margin-right:auto}
+.logo i{color:var(--hl);font-style:normal}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+button,select{font:inherit;color:inherit}
+.tab,.btn{min-height:44px;min-width:44px;padding:0 14px;border-radius:10px;border:1px solid var(--bd);background:var(--sf);cursor:pointer}
+.tab[aria-current="page"]{background:var(--ac);color:var(--acx);border-color:var(--ac)}
+.btn.p{background:var(--ac);color:var(--acx);border-color:var(--ac);font-weight:700}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+:focus-visible{outline:3px solid var(--hl);outline-offset:2px}
+.test{background:var(--hl);color:#222;text-align:center;font-size:14px;padding:6px 10px}
+main{max-width:1000px;margin:auto;padding:16px 12px 48px}
+h2{font:700 24px Georgia,serif;margin:8px 0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:12px}
+.ph{height:110px;border-radius:8px;display:grid;place-items:center;font-size:44px;margin-bottom:8px}
+.mut{color:var(--mut);font-size:14px}.price{font-weight:700;font-size:18px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+select{min-height:44px;border-radius:10px;border:1px solid var(--bd);background:var(--sf);padding:0 8px;max-width:100%}
+.tag{display:inline-block;padding:2px 8px;border-radius:99px;border:1px solid var(--bd);font-size:13px}
+.ok{color:var(--ok)}.er{color:var(--er)}
+.grp{margin-bottom:12px}.grp h3{margin:0 0 6px;font-size:17px}
+.line{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--bd);align-items:center;flex-wrap:wrap}
+.tot{font-size:20px;font-weight:700}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;max-width:92vw;display:none;z-index:9}
+@media (prefers-reduced-motion:no-preference){.card{transition:border-color .15s}.card:hover{border-color:var(--ac)}}
+</style>
+</head>
+<body>
+<header><div class="bar">
+<div class="logo">Bazar<i>.</i></div>
+<nav id="nav" aria-label="Разделы"></nav>
+</div>
+<div class="test" role="note">Демо-режим: оплата тестовая, реальные деньги не принимаются. Данные хранятся в браузере.</div>
+</header>
+<main id="app" aria-live="polite"></main>
+<div id="toast" role="status"></div>
+<script>
+// Деньги — в тыйынах (1 сом = 100). Комиссия 10% = 1000 bps (только для демонстрации).
+const BPS=1000;
+const SELLERS={a:{n:"Ала-Тоо Электроника",ship:15000,days:"2–3"},b:{n:"Ысык-Көл Дом",ship:10000,days:"3–5"},c:{n:"Нарын Текстиль",ship:10000,days:"3–5"}};
+const PRODUCTS=[
+{id:"p1",s:"a",e:"🎧",c:"#cfe8e0",n:"Наушники Tunduk",v:[{id:"p1b",o:"Чёрные",p:150000,q:5},{id:"p1w",o:"Белые",p:150000,q:2}]},
+{id:"p2",s:"a",e:"🔋",c:"#f3e3b8",n:"Powerbank 10000",v:[{id:"p2a",o:"10 000 мАч",p:120000,q:1}]},
+{id:"p3",s:"b",e:"🫖",c:"#e6d3c8",n:"Чайник керамический",v:[{id:"p3a",o:"1 л",p:80000,q:6},{id:"p3b",o:"1,5 л",p:100000,q:0}]},
+{id:"p4",s:"b",e:"🕯️",c:"#dcd6ea",n:"Набор свечей",v:[{id:"p4a",o:"3 шт.",p:50000,q:10}]},
+{id:"p5",s:"c",e:"🧣",c:"#f0d0d0",n:"Войлочный шарф",v:[{id:"p5s",o:"S",p:90000,q:3},{id:"p5m",o:"M",p:90000,q:4},{id:"p5l",o:"L",p:95000,q:0}]},
+{id:"p6",s:"c",e:"🎩",c:"#d0def0",n:"Калпак",v:[{id:"p6a",o:"Один размер",p:130000,q:2}]}];
+const V={};PRODUCTS.forEach(p=>p.v.forEach(v=>V[v.id]={...v,pr:p}));
+const FLOW=["awaiting_acceptance","accepted","packing","ready_to_ship","shipped","delivered"];
+const LBL={awaiting_acceptance:"Ждёт принятия",accepted:"Принят",packing:"Комплектуется",ready_to_ship:"Готов к отправке",shipped:"Отправлен",delivered:"Вручён",cancelled:"Отменён"};
+const NEXT={awaiting_acceptance:"Принять",accepted:"Начать комплектацию",packing:"Готов к отправке",ready_to_ship:"Отправить",shipped:"Отметить вручённым"};
+let S={stock:{},res:{},cart:{},orders:[],n:1000,view:"catalog",seller:"a",pay:"test"};
+try{const x=localStorage.getItem("bazar2");if(x)S=Object.assign(S,JSON.parse(x))}catch(e){}
+Object.keys(V).forEach(k=>{if(!(k in S.stock))S.stock[k]=V[k].q;if(!(k in S.res))S.res[k]=0});
+const save=()=>{try{localStorage.setItem("bazar2",JSON.stringify(S))}catch(e){}};
+const avail=k=>S.stock[k]-S.res[k];
+const som=m=>(m/100).toLocaleString("ru-RU")+" сом";
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const $=s=>document.querySelector(s);
+function toast(t){const e=$("#toast");e.textContent=t;e.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display="none",2600)}
+const half=(a,b)=>Math.floor((a*b+5000)/10000); // half up, bps
+function addCart(k,sel){const q=(S.cart[k]||0)+1;if(q>Math.min(99,avail(k)))return toast("Больше доступного количества добавить нельзя");S.cart[k]=q;save();render();toast("Добавлено в корзину")}
+function setQty(k,d){const q=(S.cart[k]||0)+d;if(q<=0)delete S.cart[k];else if(q>avail(k))return toast("Доступно только "+avail(k)+" шт.");else S.cart[k]=q;save();render()}
+function quote(){const g={};for(const k in S.cart){const v=V[k],s=v.pr.s;(g[s]=g[s]||{items:[],goods:0}).items.push({k,q:S.cart[k],price:v.p});g[s].goods+=v.p*S.cart[k]}
+let total=0;for(const s in g){g[s].ship=SELLERS[s].ship;g[s].fee=half(g[s].goods,BPS);total+=g[s].goods+g[s].ship}return{g,total}}
+function checkout(){const {g,total}=quote();
+// «транзакция»: сначала проверка всех остатков, затем резерв — частичного заказа не бывает
+for(const s in g)for(const i of g[s].items)if(i.q>avail(i.k))return toast("Товара «"+V[i.k].pr.n+"» стало меньше — заказ не оформлен");
+const id=++S.n,so=[];
+for(const s in g){g[s].items.forEach(i=>S.res[i.k]+=i.q);so.push({s,st:"awaiting_payment_hold",items:g[s].items,goods:g[s].goods,ship:g[s].ship,fee:g[s].fee,status:"awaiting_acceptance"})}
+S.orders.unshift({id,total,paid:S.pay==="test"?false:false,method:S.pay,so,at:new Date().toLocaleString("ru-RU",{timeZone:"Asia/Bishkek"})});
+S.cart={};S.view="orders";save();render();toast("Заказ №"+id+" создан, остатки зарезервированы")}
+function payTest(id){const o=S.orders.find(x=>x.id===id);if(o&&!o.paid){o.paid=true;save();render();toast("Тестовая оплата подтверждена сервером (демо)")}}
+function cancelSO(id,s){const o=S.orders.find(x=>x.id===id),x=o.so.find(y=>y.s===s);if(FLOW.indexOf(x.status)>=FLOW.indexOf("shipped")||x.status==="cancelled")return;
+x.items.forEach(i=>S.res[i.k]-=i.q);x.status="cancelled";save();render();toast("Подзаказ отменён, резерв освобождён"+(o.paid?"; возврат "+som(x.goods+x.ship)+" (демо)":""))}
+function advance(id,s){const o=S.orders.find(x=>x.id===id),x=o.so.find(y=>y.s===s),i=FLOW.indexOf(x.status);
+if(i<0||i>=FLOW.length-1)return;if(!o.paid&&o.method==="test"&&x.status==="awaiting_acceptance")return toast("Сначала нужна подтверждённая оплата");
+const nx=FLOW[i+1];if(nx==="shipped")x.items.forEach(t=>{S.stock[t.k]-=t.q;S.res[t.k]-=t.q}); // списание ровно один раз
+x.status=nx;save();render()}
+function oStatus(o){const st=o.so.map(x=>x.status);if(st.every(x=>x==="cancelled"))return"Полностью отменён";if(st.every(x=>x==="delivered"||x==="cancelled"))return"Получен";
+if(st.some(x=>x==="shipped"||x==="delivered"))return st.every(x=>["shipped","delivered","cancelled"].includes(x))?"Отправлен":"Частично отправлен";return o.paid||o.method==="cod"?"В обработке":"Ожидает оплаты"}
+function vCatalog(){return`<h2>Каталог</h2><div class="grid">${PRODUCTS.map(p=>`<div class="card"><div class="ph" style="background:${p.c}" aria-hidden="true">${p.e}</div><strong>${esc(p.n)}</strong><div class="mut">${esc(SELLERS[p.s].n)}</div>
+<div class="row" style="margin:8px 0"><label class="mut" for="v-${p.id}">Вариант</label><select id="v-${p.id}">${p.v.map(v=>`<option value="${v.id}" ${avail(v.id)<1?"disabled":""}>${esc(v.o)} — ${som(v.p)}${avail(v.id)<1?" (нет)":""}</option>`).join("")}</select></div>
+<div class="row"><span class="mut">Доступно: <b id="a-${p.id}">${avail(p.v.find(v=>avail(v.id)>0)?.id||p.v[0].id)}</b></span><button class="btn p" data-add="${p.id}" ${p.v.every(v=>avail(v.id)<1)?"disabled":""}>В корзину</button></div></div>`).join("")}</div>`}
+function vCart(){const k=Object.keys(S.cart);if(!k.length)return`<h2>Корзина</h2><div class="card">Корзина пуста. Выберите товары в каталоге.</div>`;
+const {g,total}=quote();return`<h2>Корзина</h2>${Object.keys(g).map(s=>`<div class="card grp"><h3>${esc(SELLERS[s].n)}</h3>${g[s].items.map(i=>`<div class="line"><span>${esc(V[i.k].pr.n)} · ${esc(V[i.k].o)}<br><span class="mut">${som(i.price)} × ${i.q}</span></span><span class="row"><button class="btn" data-q="${i.k}:-1" aria-label="Уменьшить">−</button><b>${i.q}</b><button class="btn" data-q="${i.k}:1" aria-label="Увеличить">+</button></span></div>`).join("")}
+<div class="line"><span>Товары</span><span>${som(g[s].goods)}</span></div><div class="line"><span>Доставка (${SELLERS[s].days} дн.)</span><span>${som(g[s].ship)}</span></div></div>`).join("")}
+<div class="card"><div class="row"><span>Способ оплаты</span><select id="pay" aria-label="Способ оплаты"><option value="test" ${S.pay==="test"?"selected":""}>Тестовая карта (демо)</option><option value="cod" ${S.pay==="cod"?"selected":""}>Наличными при получении</option></select></div>
+<div class="line"><span class="tot">Итого</span><span class="tot">${som(total)}</span></div><p class="mut">Комиссию площадки платит продавец, к вашей сумме она не добавляется. Остаток резервируется при оформлении.</p><button class="btn p" id="go" style="width:100%">Оформить заказ</button></div>`}
+function vOrders(){if(!S.orders.length)return`<h2>Мои заказы</h2><div class="card">Заказов пока нет.</div>`;
+return`<h2>Мои заказы</h2>${S.orders.map(o=>`<div class="card grp"><div class="row"><b>Заказ №${o.id}</b><span class="tag">${oStatus(o)}</span></div><div class="mut">${o.at} · ${o.method==="cod"?"Наличные у продавца":o.paid?"Оплачено (тест)":"Не оплачено"}</div>
+${o.so.map(x=>`<div class="line"><span>${esc(SELLERS[x.s].n)}<br><span class="mut">${x.items.map(i=>esc(V[i.k].pr.n)+" ×"+i.q).join(", ")}</span></span><span class="row"><span class="tag">${LBL[x.status]}</span>${["awaiting_acceptance","accepted","packing","ready_to_ship"].includes(x.status)?`<button class="btn" data-c="${o.id}:${x.s}">Отменить</button>`:""}</span></div>`).join("")}
+<div class="line"><span class="tot">Сумма</span><span class="tot">${som(o.total)}</span></div>${!o.paid&&o.method==="test"?`<button class="btn p" data-pay="${o.id}">Оплатить (тест)</button>`:""}</div>`).join("")}`}
+function vSeller(){const sid=S.seller;const subs=[];S.orders.forEach(o=>o.so.forEach(x=>{if(x.s===sid)subs.push({o,x})}));
+const pend=subs.filter(t=>t.x.status!=="cancelled"&&t.x.status!=="delivered"&&t.o.method==="test"&&t.o.paid).reduce((a,t)=>a+t.x.goods-t.x.fee,0);
+const avl=subs.filter(t=>t.x.status==="delivered"&&t.o.method==="test"&&t.o.paid).reduce((a,t)=>a+t.x.goods-t.x.fee,0);
+const rec=subs.filter(t=>t.x.status==="delivered"&&t.o.method==="cod").reduce((a,t)=>a+t.x.fee,0);
+return`<h2>Кабинет продавца</h2><div class="row"><label for="ss">Магазин</label><select id="ss">${Object.keys(SELLERS).map(k=>`<option value="${k}" ${k===sid?"selected":""}>${esc(SELLERS[k].n)}</option>`).join("")}</select></div>
+<div class="grid" style="margin:12px 0"><div class="card"><div class="mut">Ожидает выплаты</div><div class="price">${som(pend)}</div></div><div class="card"><div class="mut">Доступно (после удержания)</div><div class="price">${som(avl)}</div></div><div class="card"><div class="mut">Комиссия к уплате (наличные)</div><div class="price">${som(rec)}</div></div></div>
+<h2>Склад</h2><div class="card">${PRODUCTS.filter(p=>p.s===sid).flatMap(p=>p.v.map(v=>`<div class="line"><span>${esc(p.n)} · ${esc(v.o)}</span><span class="mut">на складе ${S.stock[v.id]} · резерв ${S.res[v.id]} · <b>доступно ${avail(v.id)}</b></span></div>`)).join("")}</div>
+<h2>Подзаказы</h2>${subs.length?subs.map(({o,x})=>`<div class="card grp"><div class="row"><b>№${o.id}</b><span class="tag">${LBL[x.status]}</span></div><div class="mut">${x.items.map(i=>esc(V[i.k].pr.n)+" ×"+i.q).join(", ")} · товары ${som(x.goods)} · комиссия ${som(x.fee)} · вам ${som(x.goods-x.fee)}</div>${NEXT[x.status]?`<button class="btn p" data-n="${o.id}:${x.s}" style="margin-top:8px">${NEXT[x.status]}</button>`:""}</div>`).join(""):`<div class="card">Подзаказов пока нет.</div>`}`}
+function render(){const v=S.view;const n=Object.values(S.cart).reduce((a,b)=>a+b,0);
+$("#nav").innerHTML=[["catalog","Каталог"],["cart","Корзина"+(n?" ("+n+")":"")],["orders","Заказы"],["seller","Продавец"]].map(([k,t])=>`<button class="tab" data-v="${k}" ${k===v?'aria-current="page"':""}>${t}</button>`).join("")+`<button class="tab" id="reset" title="Сбросить демо-данные">Сброс</button>`;
+$("#app").innerHTML=({catalog:vCatalog,cart:vCart,orders:vOrders,seller:vSeller})[v]()}
+document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
+if(t.dataset.v){S.view=t.dataset.v;save();render()}
+else if(t.dataset.add){const k=$("#v-"+t.dataset.add).value;addCart(k)}
+else if(t.dataset.q){const[k,d]=t.dataset.q.split(":");setQty(k,+d)}
+else if(t.id==="go")checkout();
+else if(t.dataset.pay)payTest(+t.dataset.pay);
+else if(t.dataset.c){const[i,s]=t.dataset.c.split(":");cancelSO(+i,s)}
+else if(t.dataset.n){const[i,s]=t.dataset.n.split(":");advance(+i,s)}
+else if(t.id==="reset"){try{localStorage.removeItem("bazar2")}catch(x){}location.reload()}});
+document.addEventListener("change",e=>{if(e.target.id==="pay"){S.pay=e.target.value;save()}if(e.target.id==="ss"){S.seller=e.target.value;save();render()}});
+render();
+</script>
+</body>
+</html>
